@@ -1,80 +1,59 @@
-import { ACCOUNT_ID, CLIENT_ID, CLIENT_SECRET, ZOOM_AUTH_URL } from "$env/static/private";
-import type { TokenInfo } from "$lib/types/zoom";
-import type Redis from "ioredis";
-import type { ITokenService } from "./interfaces";
+import { ACCOUNT_ID, CLIENT_ID, CLIENT_SECRET, ZOOM_AUTH_URL } from '$env/static/private';
+import type { TokenInfo } from '$lib/types/zoom';
+import type Redis from 'ioredis';
+import type { ITokenService } from './interfaces';
+import { getTokenKey } from '$lib/providers/redis';
+import { CommonFunctionality } from './common';
 
 export class TokenService implements ITokenService {
-    
-    private readonly tokenKey: string
-    private readonly redis: Redis
+	private readonly redis: Redis;
+	private readonly common: CommonFunctionality;
 
-    constructor(redis: Redis) {
-        this.redis = redis
-        this.tokenKey = "token:zoom"
-     }
+	constructor(redisClient: Redis) {
+		this.redis = redisClient;
+		this.common = new CommonFunctionality(redisClient);
+	}
 
-    public async getAccessToken(): Promise<TokenInfo> {
-        
-        const cached = await this.getAccessTokenFromCache()
+	public async getAccessToken(): Promise<TokenInfo> {
+		const tokenKey = getTokenKey();
+		const cached = await this.common.getFromCache<TokenInfo>(tokenKey);
 
-        if(cached)
-        {
-            return cached
-        }
+		if (cached) {
+			return cached;
+		}
 
-        const fetched = await this.fetchAccessTokenFromApi()
-        await this.cacheAccessToken(fetched)
+		const fetched = await this.fetchAccessTokenFromApi();
+		await this.cacheAccessToken(fetched);
 
-        return fetched
-    }
+		return fetched;
+	}
 
-    private readonly fetchAccessTokenFromApi = async(): Promise<TokenInfo> => {
-        
-        const utf8creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`, 'utf-8').toString()
-        const base64creds = btoa(utf8creds)
-    
-        const response = await fetch(`${ZOOM_AUTH_URL}`, {
-            method: "POST",
-            headers: new Headers({
-                'Authorization': 'Basic ' + base64creds,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }),
-            body: new URLSearchParams({
-                'account_id': ACCOUNT_ID,
-                'grant_type': 'account_credentials'
-            })
-        })
-    
-        if(!response.ok) 
-        {
-            throw new Error(response.statusText)
-        }
-    
-        const tokenObj: TokenInfo = await response.json()
+	private readonly fetchAccessTokenFromApi = async (): Promise<TokenInfo> => {
+		const utf8creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`, 'utf-8').toString();
+		const base64creds = btoa(utf8creds);
 
-        return tokenObj
-    }
+		const response = await fetch(`${ZOOM_AUTH_URL}`, {
+			method: 'POST',
+			headers: new Headers({
+				Authorization: 'Basic ' + base64creds,
+				'Content-Type': 'application/x-www-form-urlencoded'
+			}),
+			body: new URLSearchParams({
+				account_id: ACCOUNT_ID,
+				grant_type: 'account_credentials'
+			})
+		});
 
-    private readonly cacheAccessToken = async(token: TokenInfo): Promise<void> => {
+		if (!response.ok) {
+			throw new Error(response.statusText);
+		}
 
-        await this.redis.set(
-            this.tokenKey, 
-            JSON.stringify(token),
-            "EX",
-            token.expires_in)
-         
-    }
+		const tokenObj: TokenInfo = await response.json();
 
-    private readonly getAccessTokenFromCache = async(): Promise<TokenInfo | null> => {
+		return tokenObj;
+	};
 
-        const cached = await this.redis.get(this.tokenKey)
-
-        if(cached) 
-        {
-            const parsed: TokenInfo = JSON.parse(cached)
-            return parsed
-        }
-
-        return null
-    }
+	private readonly cacheAccessToken = async (token: TokenInfo): Promise<void> => {
+		await this.redis.set(getTokenKey(), JSON.stringify(token), 'EX', token.expires_in);
+	};
 }

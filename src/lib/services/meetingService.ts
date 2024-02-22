@@ -1,116 +1,123 @@
-import { ZOOM_REST_URL } from "$env/static/private";
-import type { Redis } from "ioredis";
-import { Participant, type MeetingInstancesInfo, type ParticipantsInfo, type PollResult, type PollQuestion, type MeetingInstance } from "$lib/types/zoom";
-import { AuthorizedServer } from "./authorizedService";
-import config from "$lib/data/config.json"
-import type { IMeetingService } from "./interfaces";
+import { ZOOM_REST_URL } from '$env/static/private';
+import type { Redis } from 'ioredis';
+import {
+	Participant,
+	type MeetingInstancesInfo,
+	type ParticipantsInfo,
+	type PollResult,
+	type MeetingInstance
+} from '$lib/types/zoom';
+import config from '$lib/data/config.json';
+import type { IMeetingService } from './interfaces';
+import { getParticipantsKey } from '$lib/providers/redis';
+import { CommonFunctionality } from './common';
 
-export class MeetingService extends AuthorizedServer implements IMeetingService {
+export class MeetingService implements IMeetingService {
+	private readonly redisClient: Redis;
+	private readonly common: CommonFunctionality;
 
-    constructor(redisClient: Redis) {
-        super(redisClient)
-    }
+	constructor(redisClient: Redis) {
+		this.redisClient = redisClient;
+		this.common = new CommonFunctionality(redisClient);
+	}
 
-    public async getPastMeetingInstances(meetingId: number): Promise<MeetingInstance[]> {
+	public async getPastMeetingInstances(meetingId: number): Promise<MeetingInstance[]> {
+		const url = new URL(`${ZOOM_REST_URL}/past_meetings/${meetingId}/instances`);
+		const info = await this.common.fetchAndMaybeThrow<MeetingInstancesInfo>(url);
 
-        const url = `${ZOOM_REST_URL}/past_meetings/${meetingId}/instances`
+		info.meetings.sort(this.sortMeetingsByDate);
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: await this.getAccessHeaders()
-        })
+		return info.meetings;
+	}
 
-        if (!response.ok) {
-            throw new Error(response.statusText)
-        }
+	public async getPastMeetingParticipants(uuid: string): Promise<Participant[]> {
+		const key = getParticipantsKey(uuid);
+		const cached = await this.common.getFromCache<Participant[]>(key);
 
-        const info: MeetingInstancesInfo = await response.json()
+		if (cached) {
+			return cached;
+		}
 
-        info.meetings.sort(this.sortMeetingsByDate)
+		const participants = await this.fetchPastMeetingParticipants(uuid);
+		await this.cacheMeetingParticipants(uuid, participants);
 
-        return info.meetings
-    }
+		return participants;
+	}
 
-    public async getPastMeetingParticipants(uuid: string): Promise<ParticipantsInfo> {
+	public async getPastMeetingPollResults(uuid: string): Promise<PollResult> {
+		const url = new URL(`${ZOOM_REST_URL}/past_meetings/${uuid}/polls`);
+		const polls = await this.common.fetchAndMaybeThrow<PollResult>(url);
 
-        const url = `${ZOOM_REST_URL}/past_meetings/${uuid}/participants?page_size=300`
+		return polls;
+	}
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: await this.getAccessHeaders()
-        })
+	private async fetchPastMeetingParticipants(uuid: string): Promise<Participant[]> {
+		const url = new URL(`${ZOOM_REST_URL}/past_meetings/${uuid}/participants?page_size=300`);
 
-        if (!response.ok) {
-            throw new Error(response.statusText)
-        }
+		const page = await this.common.fetchAndMaybeThrow<ParticipantsInfo>(url);
 
-        const page: ParticipantsInfo = await response.json()
-        page.participants = this.filterParticipants(page.participants)
+		while (page.next_page_token !== '') {
+			const searchParams = new URLSearchParams(url.search);
+			searchParams.set('next_page_token', page.next_page_token);
+			url.search = searchParams.toString();
 
-        const pollResults = await this.getPastMeetingPollResults(uuid)
+			const next_page = await this.common.fetchAndMaybeThrow<ParticipantsInfo>(url);
+			page.participants = page.participants.concat(next_page.participants);
+		}
 
-        this.applyPollResultToEachParticipant(page.participants, pollResults)
+		page.participants = this.filterParticipants(page.participants);
 
-        return page
-    }
+		const pollResults = await this.getPastMeetingPollResults(uuid);
 
-    public async getPastMeetingPollResults(uuid: string): Promise<PollResult> {
-        const url = `${ZOOM_REST_URL}/past_meetings/${uuid}/polls`
+		this.applyPollResultToEachParticipant(page.participants, pollResults);
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: await this.getAccessHeaders()
-        })
+		return page.participants;
+	}
 
-        if (!response.ok) {
-            throw new Error(response.statusText)
-        }
+	private filterParticipants(participants: Participant[]): Participant[] {
+		const map = new Map<string, Participant>();
 
-        const polls: PollResult = await response.json()
-        
-        return polls
-    }
+		participants.forEach((p) => {
+			if (
+				p.status === 'in_waiting_room' ||
+				config.ignored_participants.includes(p.name) ||
+				p.duration < 600
+			)
+				return;
 
-    private filterParticipants(participants: Participant[]) {
+			const existingObj = map.get(p.name);
 
-        const map = new Map<string, Participant>()
-
-        participants.forEach(p => {
-
-            if (p.status === 'in_waiting_room' 
-            || config.ignored_participants.includes(p.name)
-            || p.duration < 600) return
-
-            const existingObj = map.get(p.name)
-
-            if (!existingObj || p.duration > existingObj.duration) {
-                map.set(p.name, p)
-            }
-        })
-
-        const ret = Array.from(map.values()).sort(Participant.compare)
-
-        return ret
-    }
-
-    private sortMeetingsByDate(a: MeetingInstance, b: MeetingInstance) {
-        return new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-    }
-
-    private applyPollResultToEachParticipant(participants: Participant[], pollResult: PollResult): void {
-        
-        participants.forEach(p => {
-			const userAnswers = pollResult.questions.findIndex(q => q.name === p.name)
-
-			if(userAnswers !== -1) 
-			{
-				p.poll_answer = parseInt(pollResult.questions[userAnswers].question_details[0].answer)
+			if (!existingObj || p.duration > existingObj.duration) {
+				map.set(p.name, p);
 			}
-			else
-			{
-				p.poll_answer = 1
-			}
-		})
+		});
 
-    }
+		const ret = Array.from(map.values()).sort(Participant.compare);
+
+		return ret;
+	}
+
+	private async cacheMeetingParticipants(uuid: string, participants: Participant[]): Promise<void> {
+		const key = getParticipantsKey(uuid);
+		this.redisClient.set(key, JSON.stringify(participants));
+	}
+
+	private sortMeetingsByDate(a: MeetingInstance, b: MeetingInstance): number {
+		return new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
+	}
+
+	private applyPollResultToEachParticipant(
+		participants: Participant[],
+		pollResult: PollResult
+	): void {
+		participants.forEach((p) => {
+			const userAnswers = pollResult.questions.findIndex((q) => q.name === p.name);
+
+			if (userAnswers !== -1) {
+				p.poll_answer = parseInt(pollResult.questions[userAnswers].question_details[0].answer);
+			} else {
+				p.poll_answer = 1;
+			}
+		});
+	}
 }

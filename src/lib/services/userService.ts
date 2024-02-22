@@ -1,136 +1,71 @@
-import { ZOOM_REST_URL } from "$env/static/private"
-import type Redis from "ioredis"
-import type { MeetingsInfo, QueryMeetingType, User, Zak } from "$lib/types/zoom"
-import { AuthorizedServer } from "./authorizedService"
-import type { IUserService } from "./interfaces"
+import { ZOOM_REST_URL } from '$env/static/private';
+import type Redis from 'ioredis';
+import type { MeetingsInfo, QueryMeetingType, User, Zak } from '$lib/types/zoom';
+import type { IUserService } from './interfaces';
+import { CommonFunctionality } from './common';
+import { getUserKey, getZakKey } from '$lib/providers/redis';
 
-export class UserService extends AuthorizedServer implements IUserService {
+export class UserService implements IUserService {
+	private readonly redisClient: Redis;
+	private readonly common: CommonFunctionality;
 
-    private readonly userKey: string
-    private readonly zakKey: string
+	constructor(redisClient: Redis) {
+		this.redisClient = redisClient;
+		this.common = new CommonFunctionality(redisClient);
+	}
 
-    constructor(redisClient: Redis) {
-        super(redisClient)
-        this.userKey = "user"
-        this.zakKey = "zak"
-    }
-    
-    public async getUser(): Promise<User> {
-        const cachedUser = await this.getUserFromCache()
+	public async getUser(): Promise<User> {
+		const cachedUser = await this.common.getFromCache<User>(getUserKey());
 
-        if(cachedUser) 
-        {
-            return cachedUser
-        }
+		if (cachedUser) {
+			return cachedUser;
+		}
 
-        const user = await this.fetchUser()
-        await this.cacheUser(user)
-        
-        return user
-    }
+		const user = await this.fetchUser();
+		await this.cacheUser(user);
 
-    public async getZak(): Promise<Zak> {
-        const cachedZak = await this.getZakFromCache()
+		return user;
+	}
 
-        if(cachedZak) 
-        {
-            return cachedZak
-        }
+	public async getZak(): Promise<Zak> {
+		const cachedZak = await this.common.getFromCache<Zak>(getZakKey());
 
-        const zak = await this.fetchZak()
-        await this.cacheZak(zak)
+		if (cachedZak) {
+			return cachedZak;
+		}
 
-        return zak
-    }
+		const zak = await this.fetchZak();
+		await this.cacheZak(zak);
 
-    public async getUserMeetings(type: QueryMeetingType): Promise<MeetingsInfo> {
-        const url = `${ZOOM_REST_URL}/users/me/meetings?type=${type}`
+		return zak;
+	}
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: await this.getAccessHeaders()
-        })
+	public async getUserMeetings(type: QueryMeetingType): Promise<MeetingsInfo> {
+		const url = new URL(`${ZOOM_REST_URL}/users/me/meetings?type=${type}`);
+		const meetings = await this.common.fetchAndMaybeThrow<MeetingsInfo>(url);
 
-        if(!response.ok)
-        {
-            throw Error(response.statusText)
-        }
+		return meetings;
+	}
 
-        const meetings: MeetingsInfo = await response.json()
+	private async fetchZak(): Promise<Zak> {
+		const url = new URL(`${ZOOM_REST_URL}/users/me/token?type=zak`);
+		const zak = await this.common.fetchAndMaybeThrow<Zak>(url);
 
-        return meetings
-    }
+		return zak;
+	}
 
-    private async fetchZak(): Promise<Zak> {
-        const url =`${ZOOM_REST_URL}/users/me/token?type=zak`
+	private async fetchUser(): Promise<User> {
+		const url = new URL(`${ZOOM_REST_URL}/users/me`);
+		const user = await this.common.fetchAndMaybeThrow<User>(url);
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: await this.getAccessHeaders()
-        })
+		return user;
+	}
 
-        if(!response.ok)
-        {
-            throw Error(response.statusText)
-        }
+	private async cacheUser(user: User): Promise<void> {
+		await this.redisClient.set(getUserKey(), JSON.stringify(user), 'EX', 1200);
+	}
 
-        const zak: Zak = await response.json()
-
-        return zak
-    }
-
-    private async fetchUser(): Promise<User> {
-        const response = await fetch(`${ZOOM_REST_URL}/users/me`, {
-            method: "GET",
-            headers: await this.getAccessHeaders()
-        })
-    
-        if(!response.ok) {
-            throw Error(response.statusText)
-        }
-    
-        const user: User = await response.json()
-
-        return user
-    }
-
-    private async cacheUser(user: User): Promise<void> {
-        await this.redisClient.set(this.userKey, JSON.stringify(user), "EX", 1200)
-    }
-
-    private async cacheZak(zak: Zak): Promise<void> {
-        await this.redisClient.set(this.zakKey, JSON.stringify(zak), "EX", 7776000)
-    }
-
-    private async getZakFromCache(): Promise<Zak | null> {
-        const cached = await this.redisClient.get(this.zakKey)
-
-        if(cached) 
-        {
-            const zak: Zak = JSON.parse(cached)
-
-            return zak
-        }
-
-        return null
-    }
-
-    private async getUserFromCache(): Promise<User | null> {
-        const cached = await this.redisClient.get(this.userKey)
-
-        if(cached) {
-            const user: User = JSON.parse(cached)
-
-            return user
-        }
-
-        return null
-    }
+	private async cacheZak(zak: Zak): Promise<void> {
+		await this.redisClient.set(getUserKey(), JSON.stringify(zak), 'EX', 7776000);
+	}
 }
-
-
-
-
-
-
-
