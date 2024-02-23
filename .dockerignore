@@ -10,6 +10,10 @@
 **/.git
 **/.gitignore
 **/.project
+**/.eslintignore
+**/.eslintrc.cjs
+**/.prettierignore
+**/.prettierrc
 **/.settings
 **/.toolstarget
 **/.vs
@@ -30,5 +34,6 @@
 **/values.dev.yaml
 **/build
 **/dist
+**/.svelte-kit
 LICENSE
 README.md

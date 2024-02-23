@@ -1,5 +1,3 @@
-import { ZOOM_REST_URL } from '$env/static/private'
-import type { Redis } from 'ioredis'
 import {
 	Participant,
 	type MeetingInstancesInfo,
@@ -9,21 +7,26 @@ import {
 } from '$lib/types/zoom'
 import config from '$lib/data/config.json'
 import type { IMeetingService } from './interfaces'
-import { getFromCache, getParticipantsKey } from '$lib/providers/redis'
+import { RedisProvider, getParticipantsKey } from '$lib/providers/redis'
 import { CommonFunk } from './common'
+import { ZOOM_REST_API } from '$lib/constants'
 
 
 export class MeetingService implements IMeetingService {
-	private readonly redisClient: Redis
+
+	private readonly redisProvider: RedisProvider
 	private readonly common: CommonFunk
 
-	constructor(redisClient: Redis) {
-		this.redisClient = redisClient
-		this.common = new CommonFunk(redisClient)
+	constructor(opts: {
+		redisProvider: RedisProvider, 
+		commonFunk: CommonFunk
+	}) {
+		this.redisProvider = opts.redisProvider
+		this.common = opts.commonFunk
 	}
 
 	public async getPastMeetingInstances(meetingId: number): Promise<MeetingInstance[]> {
-		const url = new URL(`${ZOOM_REST_URL}/past_meetings/${meetingId}/instances`)
+		const url = new URL(`${ZOOM_REST_API}/past_meetings/${meetingId}/instances`)
 		const info = await this.common.fetchAndMaybeThrow<MeetingInstancesInfo>(url,)
 
 		info.meetings.sort(this.sortMeetingsByDate)
@@ -33,10 +36,11 @@ export class MeetingService implements IMeetingService {
 
 	public async getPastMeetingParticipants(uuid: string): Promise<Participant[]> {
 		const key = getParticipantsKey(uuid)
-		const cached = await getFromCache<Participant[]>(key)
+		const cached = await this.redisProvider.redis.get(key)
 
 		if (cached) {
-			return cached
+			const parsed = JSON.parse(cached)
+			return parsed as Participant[]
 		}
 
 		const participants = await this.fetchPastMeetingParticipants(uuid)
@@ -46,14 +50,14 @@ export class MeetingService implements IMeetingService {
 	}
 
 	public async getPastMeetingPollResults(uuid: string): Promise<PollResult> {
-		const url = new URL(`${ZOOM_REST_URL}/past_meetings/${uuid}/polls`)
+		const url = new URL(`${ZOOM_REST_API}/past_meetings/${uuid}/polls`)
 		const polls = await this.common.fetchAndMaybeThrow<PollResult>(url)
 
 		return polls
 	}
 
 	private async fetchPastMeetingParticipants(uuid: string): Promise<Participant[]> {
-		const url = new URL(`${ZOOM_REST_URL}/past_meetings/${uuid}/participants?page_size=300`)
+		const url = new URL(`${ZOOM_REST_API}/past_meetings/${uuid}/participants?page_size=300`)
 
 		const page = await this.common.fetchAndMaybeThrow<ParticipantsInfo>(url)
 
@@ -100,7 +104,7 @@ export class MeetingService implements IMeetingService {
 
 	private async cacheMeetingParticipants(uuid: string, participants: Participant[]): Promise<void> {
 		const key = getParticipantsKey(uuid)
-		this.redisClient.set(key, JSON.stringify(participants))
+		this.redisProvider.redis.set(key, JSON.stringify(participants))
 	}
 
 	private sortMeetingsByDate(a: MeetingInstance, b: MeetingInstance): number {

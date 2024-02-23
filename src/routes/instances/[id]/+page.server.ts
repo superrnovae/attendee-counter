@@ -1,8 +1,7 @@
-import { meetingService } from '$lib/constants'
+import { MeetingService } from '$lib/services/meetingService'
 import type { MeetingInstancesProps } from '$lib/types/props'
 import { error } from '@sveltejs/kit'
-
-export const prerender = true
+import container from "$lib/providers/container"
 
 /** @type {import('./$types').PageLoad} */
 export async function load({ params }): Promise<MeetingInstancesProps> {
@@ -16,6 +15,7 @@ export async function load({ params }): Promise<MeetingInstancesProps> {
 	}
 
 	try {
+		const meetingService = container.resolve<MeetingService>('meetingService')
 		const response = meetingService.getPastMeetingInstances(meetingId)
 
 		return {

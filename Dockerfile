@@ -11,7 +11,7 @@ ARG PNPM_VERSION=8.15.3
 
 ################################################################################
 # Use node image for base image for all stages.
-FROM node:${NODE_VERSION}-alpine as base
+FROM node:${NODE_VERSION}-bookworm as base
 
 # Set working directory for all build stages.
 WORKDIR /usr/src/app
@@ -36,6 +36,19 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 ################################################################################
 # Create a stage for building the application.
 FROM deps as build
+
+ARG REDIS_HOST
+ARG REDIS_PORT
+
+ARG ACCOUNT_ID
+ARG CLIENT_ID
+ARG CLIENT_SECRET
+
+ENV REDIS_HOST=${REDIS_HOST}
+ENV REDIS_PORT=${REDIS_PORT}
+ENV ACCOUNT_ID=${ACCOUNT_ID}
+ENV CLIENT_ID=${CLIENT_ID}
+ENV CLIENT_SECRET=${CLIENT_SECRET}
 
 # Download additional development dependencies before building, as some projects require
 # "devDependencies" to be installed to build. If you don't need this, remove this step.
@@ -66,11 +79,11 @@ COPY package.json .
 # Copy the production dependencies from the deps stage and also
 # the built application from the build stage into the image.
 COPY --from=deps /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/output ./output
+COPY --from=build /usr/src/app/build ./build
 
 
 # Expose the port that the application listens on.
 EXPOSE 3000
 
 # Run the application.
-CMD node build
+CMD node -r dotenv/config build

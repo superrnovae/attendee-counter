@@ -1,13 +1,11 @@
-import type Redis from "ioredis"
-import type { ITokenService } from "./interfaces"
 import { TokenService } from "./tokenService"
 
 export class CommonFunk {
 
-    private readonly tokenService: ITokenService
-    
-    constructor(redisClient: Redis) {
-        this.tokenService = new TokenService(redisClient)
+	private readonly tokenService: TokenService
+
+    constructor(opts: { tokenService: TokenService }) { 
+        this.tokenService = opts.tokenService
     }
 
     public async fetchAndMaybeThrow<T>(url: URL): Promise<T> {

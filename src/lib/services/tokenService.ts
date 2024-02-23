@@ -1,22 +1,24 @@
-import { ACCOUNT_ID, CLIENT_ID, CLIENT_SECRET, ZOOM_AUTH_URL } from '$env/static/private'
+import { ACCOUNT_ID, CLIENT_ID, CLIENT_SECRET } from '$env/static/private'
 import type { TokenInfo } from '$lib/types/zoom'
-import type Redis from 'ioredis'
 import type { ITokenService } from './interfaces'
-import { getFromCache, getTokenKey } from '$lib/providers/redis'
+import { RedisProvider, getTokenKey } from '$lib/providers/redis'
+import { ZOOM_AUTH_API } from '$lib/constants'
 
 export class TokenService implements ITokenService {
-	private readonly redis: Redis
 
-	constructor(redisClient: Redis) {
-		this.redis = redisClient
+	private readonly redisProvider: RedisProvider
+
+	constructor(opts: { redisProvider: RedisProvider }) {
+		this.redisProvider = opts.redisProvider
 	}
 
 	public async getAccessToken(): Promise<TokenInfo> {
 		const tokenKey = getTokenKey()
-		const cached = await getFromCache<TokenInfo>(tokenKey)
+		const cached = await this.redisProvider.redis.get(tokenKey)
 
 		if (cached) {
-			return cached
+			const parsed = JSON.parse(cached)
+			return parsed
 		}
 
 		const fetched = await this.fetchAccessTokenFromApi()
@@ -29,7 +31,7 @@ export class TokenService implements ITokenService {
 		const utf8creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`, 'utf-8').toString()
 		const base64creds = btoa(utf8creds)
 
-		const response = await fetch(`${ZOOM_AUTH_URL}`, {
+		const response = await fetch(`${ZOOM_AUTH_API}`, {
 			method: 'POST',
 			headers: new Headers({
 				Authorization: 'Basic ' + base64creds,
@@ -51,6 +53,6 @@ export class TokenService implements ITokenService {
 	}
 
 	private readonly cacheAccessToken = async (token: TokenInfo): Promise<void> => {
-		await this.redis.set(getTokenKey(), JSON.stringify(token), 'EX', token.expires_in)
+		await this.redisProvider.redis.set(getTokenKey(), JSON.stringify(token), 'EX', token.expires_in)
 	}
 }
