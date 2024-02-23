@@ -11,23 +11,18 @@ import { RedisProvider, getParticipantsKey } from '$lib/providers/redis'
 import { CommonFunk } from './common'
 import { ZOOM_REST_API } from '$lib/constants'
 
-
 export class MeetingService implements IMeetingService {
-
 	private readonly redisProvider: RedisProvider
 	private readonly common: CommonFunk
 
-	constructor(opts: {
-		redisProvider: RedisProvider, 
-		commonFunk: CommonFunk
-	}) {
+	constructor(opts: { redisProvider: RedisProvider; commonFunk: CommonFunk }) {
 		this.redisProvider = opts.redisProvider
 		this.common = opts.commonFunk
 	}
 
 	public async getPastMeetingInstances(meetingId: number): Promise<MeetingInstance[]> {
 		const url = new URL(`${ZOOM_REST_API}/past_meetings/${meetingId}/instances`)
-		const info = await this.common.fetchAndMaybeThrow<MeetingInstancesInfo>(url,)
+		const info = await this.common.fetchAndMaybeThrow<MeetingInstancesInfo>(url)
 
 		info.meetings.sort(this.sortMeetingsByDate)
 

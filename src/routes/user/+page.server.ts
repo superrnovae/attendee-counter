@@ -1,7 +1,7 @@
 import { UserService } from '$lib/services/userService'
 import type { UserProps } from '$lib/types/props'
 import { error } from '@sveltejs/kit'
-import container from "$lib/providers/container"
+import container from '$lib/providers/container'
 
 export const prerender = true
 

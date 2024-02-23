@@ -5,14 +5,10 @@ import { RedisProvider, getUserKey, getZakKey } from '$lib/providers/redis'
 import { ZOOM_REST_API } from '$lib/constants'
 
 export class UserService implements IUserService {
-
 	private readonly redisProvider: RedisProvider
 	private readonly common: CommonFunk
 
-	constructor(opts: {
-		redisProvider: RedisProvider, 
-		commonFunk: CommonFunk
-	}) {
+	constructor(opts: { redisProvider: RedisProvider; commonFunk: CommonFunk }) {
 		this.redisProvider = opts.redisProvider
 		this.common = opts.commonFunk
 	}

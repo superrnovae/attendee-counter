@@ -14,7 +14,7 @@ services:
       - .env
 
     ports:
-      - "${NODE_PORT}:${NODE_PORT}"
+      - '${NODE_PORT}:${NODE_PORT}'
     volumes:
       - type: bind
         source: ./.env
@@ -28,15 +28,14 @@ services:
     image: redis:latest
     restart: always
     volumes:
-    - redis-data:/data
+      - redis-data:/data
     expose:
-    - ${REDIS_PORT}
+      - ${REDIS_PORT}
     healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
       interval: 10s
       timeout: 3s
       retries: 5
-    
+
 volumes:
   redis-data:
-

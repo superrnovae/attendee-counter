@@ -1,7 +1,7 @@
 import { MeetingService } from '$lib/services/meetingService'
 import type { MeetingInstancesProps } from '$lib/types/props'
 import { error } from '@sveltejs/kit'
-import container from "$lib/providers/container"
+import container from '$lib/providers/container'
 
 /** @type {import('./$types').PageLoad} */
 export async function load({ params }): Promise<MeetingInstancesProps> {

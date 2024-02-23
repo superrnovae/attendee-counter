@@ -5,7 +5,6 @@ import { RedisProvider, getTokenKey } from '$lib/providers/redis'
 import { ZOOM_AUTH_API } from '$lib/constants'
 
 export class TokenService implements ITokenService {
-
 	private readonly redisProvider: RedisProvider
 
 	constructor(opts: { redisProvider: RedisProvider }) {
