@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { SpinnerTypes } from '../types/spinner.type';
-	import { range } from '../utils';
-	export let color: SpinnerTypes['color'] = '#FF3E00';
-	export let unit: SpinnerTypes['unit'] = 'px';
-	export let duration: SpinnerTypes['duration'] = '2s';
-	export let size: SpinnerTypes['size'] = '60';
-	export let pause: SpinnerTypes['pause'] = false;
+	import type { SpinnerTypes } from '../types/spinner.type'
+	import { range } from '../utils'
+	export let color: SpinnerTypes['color'] = '#FF3E00'
+	export let unit: SpinnerTypes['unit'] = 'px'
+	export let duration: SpinnerTypes['duration'] = '2s'
+	export let size: SpinnerTypes['size'] = '60'
+	export let pause: SpinnerTypes['pause'] = false
 </script>
 
 <div class="wrapper" style="--size: {size}{unit}; --color: {color}; --duration: {duration};">

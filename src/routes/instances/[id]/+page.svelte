@@ -1,37 +1,37 @@
 <script lang="ts">
-	import type { MeetingInstancesProps } from '$lib/types/props';
-	import type { MeetingInstance } from '$lib/types/zoom';
-	import { onMount } from 'svelte';
+	import type { MeetingInstancesProps } from '$lib/types/props'
+	import type { MeetingInstance } from '$lib/types/zoom'
+	import { onMount } from 'svelte'
 
-	const pageSize: number = 10;
+	const pageSize: number = 10
 
-	export let data: MeetingInstancesProps;
+	export let data: MeetingInstancesProps
 
-	let instances: MeetingInstance[] = [];
+	let instances: MeetingInstance[] = []
 
-	$: pageNumber = 0;
-	$: page = instances.slice(pageNumber * pageSize, (pageNumber + 1) * pageSize);
-	$: hasNextPage = page.length >= pageSize;
-	$: hasPreviousPage = pageNumber > 0;
+	$: pageNumber = 0
+	$: page = instances.slice(pageNumber * pageSize, (pageNumber + 1) * pageSize)
+	$: hasNextPage = page.length >= pageSize
+	$: hasPreviousPage = pageNumber > 0
 
 	onMount(async () => {
-		instances = await data.instances;
-	});
+		instances = await data.instances
+	})
 
 	function handleNextPageButtonClick() {
-		pageNumber += 1;
+		pageNumber += 1
 	}
 
 	function handlePreviousPageButtonClick() {
-		pageNumber -= 1;
+		pageNumber -= 1
 	}
 
 	function encodeUUID(uuid: string): string {
-		return encodeURIComponent(encodeURIComponent(uuid));
+		return encodeURIComponent(encodeURIComponent(uuid))
 	}
 
 	function getLocalDate(jsonDate: string): string {
-		return new Date(jsonDate).toLocaleString('fr-FR');
+		return new Date(jsonDate).toLocaleString('fr-FR')
 	}
 </script>
 

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { UserProps } from '$lib/types/props';
-	import { LoginType } from '$lib/types/zoom';
+	import type { UserProps } from '$lib/types/props'
+	import { LoginType } from '$lib/types/zoom'
 
-	export let data: UserProps;
+	export let data: UserProps
 </script>
 
 {#await data.user}

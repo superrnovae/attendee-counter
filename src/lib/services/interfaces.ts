@@ -7,20 +7,20 @@ import type {
 	TokenInfo,
 	User,
 	Zak
-} from '$lib/types/zoom';
+} from '$lib/types/zoom'
 
 export interface IUserService {
-	getUser(): Promise<User>;
-	getZak(): Promise<Zak>;
-	getUserMeetings(type: QueryMeetingType): Promise<MeetingsInfo>;
+	getUser(): Promise<User>
+	getZak(): Promise<Zak>
+	getUserMeetings(type: QueryMeetingType): Promise<MeetingsInfo>
 }
 
 export interface IMeetingService {
-	getPastMeetingInstances(meetingId: number): Promise<MeetingInstance[]>;
-	getPastMeetingParticipants(uuid: string): Promise<Participant[]>;
-	getPastMeetingPollResults(uuid: string): Promise<PollResult>;
+	getPastMeetingInstances(meetingId: number): Promise<MeetingInstance[]>
+	getPastMeetingParticipants(uuid: string): Promise<Participant[]>
+	getPastMeetingPollResults(uuid: string): Promise<PollResult>
 }
 
 export interface ITokenService {
-	getAccessToken(): Promise<TokenInfo>;
+	getAccessToken(): Promise<TokenInfo>
 }

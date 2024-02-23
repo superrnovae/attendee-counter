@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { UserMeetingsProps } from '$lib/types/props';
-	import { MeetingType, type Meeting } from '$lib/types/zoom';
+	import type { UserMeetingsProps } from '$lib/types/props'
+	import { MeetingType, type Meeting } from '$lib/types/zoom'
 
-	export let data: UserMeetingsProps;
+	export let data: UserMeetingsProps
 
 	function getInstanceId(meeting: Meeting) {
-		if (meeting.type === MeetingType.RECURRING_MEETING_WITH_NO_FIXED_TIME) return meeting.pmi;
+		if (meeting.type === MeetingType.RECURRING_MEETING_WITH_NO_FIXED_TIME) return meeting.pmi
 
-		return meeting.id;
+		return meeting.id
 	}
 </script>
 

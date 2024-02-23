@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { MeetingParticipantsProps } from '$lib/types/props';
-	import type { Participant } from '$lib/types/zoom';
+	import type { MeetingParticipantsProps } from '$lib/types/props'
+	import type { Participant } from '$lib/types/zoom'
 
-	export let data: MeetingParticipantsProps;
+	export let data: MeetingParticipantsProps
 
 	function getNumberOfParticipants(participants: Participant[]): number {
-		const count = participants.reduce((accum, curr) => accum + curr.poll_answer, 0);
+		const count = participants.reduce((accum, curr) => accum + curr.poll_answer, 0)
 
-		return count;
+		return count
 	}
 </script>
 

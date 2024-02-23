@@ -3,10 +3,10 @@
 declare global {
 	namespace App {
 		interface Error {
-			message: string;
-			code: string;
+			message: string
+			code: string
 		}
 	}
 }
 
-export {};
+export {}
