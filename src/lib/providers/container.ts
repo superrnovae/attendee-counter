@@ -4,7 +4,7 @@ import { CommonFunk } from '$lib/services/common'
 import { TokenService } from '$lib/services/tokenService'
 import { MeetingService } from '$lib/services/meetingService'
 import { UserService } from '$lib/services/userService'
-import { REDIS_HOST, REDIS_PORT } from '$env/static/private'
+import { env } from '$env/dynamic/private'
 
 const container = createContainer({
 	injectionMode: InjectionMode.PROXY,
@@ -15,8 +15,8 @@ container.register({
 	redisProvider: asClass(RedisProvider)
 		.singleton()
 		.inject(() => ({
-			host: REDIS_HOST,
-			port: REDIS_PORT
+			url: env.REDIS_URL,
+			port: env.REDIS_PORT
 		})),
 	tokenService: asClass(TokenService).scoped(),
 	commonFunk: asClass(CommonFunk).scoped(),

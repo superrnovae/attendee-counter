@@ -2,13 +2,12 @@ import { UserService } from '$lib/services/userService'
 import type { UserProps } from '$lib/types/props'
 import { error } from '@sveltejs/kit'
 import container from '$lib/providers/container'
-
-export const prerender = true
+import type { IUserService } from '$lib/services/interfaces'
 
 /** @type {import('./$types').PageLoad} */
 export async function load(): Promise<UserProps> {
 	try {
-		const userService = container.resolve<UserService>('userService')
+		const userService: IUserService = container.resolve<UserService>('userService')
 
 		return {
 			user: userService.getUser()

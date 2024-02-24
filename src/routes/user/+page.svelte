@@ -3,6 +3,7 @@
 	import { LoginType } from '$lib/types/zoom'
 
 	export let data: UserProps
+
 </script>
 
 {#await data.user}

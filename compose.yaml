@@ -1,25 +1,21 @@
-version: '3'
+version: '3.9'
 services:
   server:
     build:
       context: .
       args:
         - NODE_ENV=production
-        - REDIS_HOST=${REDIS_HOST}
+        - NODE_PORT=${NODE_PORT}
+        - REDIS_URL=${REDIS_URL}
         - REDIS_PORT=${REDIS_PORT}
         - ACCOUNT_ID=${ACCOUNT_ID}
         - CLIENT_ID=${CLIENT_ID}
         - CLIENT_SECRET=${CLIENT_SECRET}
     env_file:
       - .env
-
+      - .env.prod
     ports:
       - '${NODE_PORT}:${NODE_PORT}'
-    volumes:
-      - type: bind
-        source: ./.env
-        target: ./build/.env
-        read_only: true
     depends_on:
       redis:
         condition: service_healthy
@@ -29,8 +25,8 @@ services:
     restart: always
     volumes:
       - redis-data:/data
-    expose:
-      - ${REDIS_PORT}
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
     healthcheck:
       test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
       interval: 10s
@@ -39,3 +35,6 @@ services:
 
 volumes:
   redis-data:
+
+networks:
+  default:

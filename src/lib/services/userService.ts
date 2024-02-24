@@ -67,6 +67,6 @@ export class UserService implements IUserService {
 	}
 
 	private async cacheZak(zak: Zak): Promise<void> {
-		await this.redisProvider.redis.set(getUserKey(), JSON.stringify(zak), 'EX', 7776000)
+		await this.redisProvider.redis.set(getZakKey(), JSON.stringify(zak), 'EX', 7776000)
 	}
 }

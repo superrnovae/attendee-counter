@@ -1,19 +1,20 @@
+import { building } from '$app/environment';
 import Redis from 'ioredis'
 
 export class RedisProvider {
 	public readonly redis: Redis
 
-	constructor(opts: { host: string; port: number }) {
-		this.redis = new Redis({
-			host: opts.host,
-			port: opts.port
-		})
+	constructor(opts: { url: string, port: string }) {
+		this.redis = new Redis(`${opts.url}:${opts.port}`)
 
 		this.redis.on('connect', () => {
 			console.log('Connected to Redis')
 		})
 
 		this.redis.on('error', (error) => {
+
+			if(building) return
+
 			console.error(`Error connecting to Redis: ${error}`)
 			throw new Error('Unable to connect with RedisClient')
 		})
